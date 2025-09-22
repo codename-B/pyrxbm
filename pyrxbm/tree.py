@@ -1,9 +1,9 @@
+# Cleaned: pruned non-Python comment lines; normalized whitespace.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from .datatypes import UniqueId, Int64, SecurityCapabilities
-
 
 @dataclass
 class Instance:
@@ -21,9 +21,9 @@ class Instance:
     """ The SecurityCapabilities of this instance. """
     Capabilities: SecurityCapabilities = field(default=0, repr=False)
     """ A unique identifier declared for the history of this instance. """
-    HistoryId: UniqueId = field(default=UniqueId(0, 0, 0), repr=False)
+    HistoryId: UniqueId = field(default_factory=lambda: UniqueId(0, 0, 0))
     """ A unique identifier declared for this instance. """
-    UniqueId: UniqueId = field(default=UniqueId(0, 0, 0), repr=False)
+    UniqueId:  UniqueId = field(default_factory=lambda: UniqueId(0, 0, 0))
     """ A hashset of CollectionService tags assigned to this Instance. """
     Tags: bytes = field(default=b"", repr=False)
     """ The public readonly access point of the attributes on this Instance. """
@@ -90,14 +90,6 @@ class Instance:
     #             buffer.clear()
 
     """
-        /// <summary>
-    /// Attempts to get the value of an attribute whose type is T.
-    /// Returns false if no attribute was found with that type.
-        /// </summary>
-    /// <typeparam name="T">The expected type of the attribute.</typeparam>
-    /// <param name="key">The name of the attribute.</param>
-    /// <param name="value">The out value to set.</param>
-    /// <returns>True if the attribute could be read and the out value was set, false otherwise.</returns>
     public bool GetAttribute<T>(string key, out T value)
     {
         if (Attributes.TryGetValue(key, out RbxAttribute attr))
@@ -113,15 +105,6 @@ class Instance:
         return false;
     }
 
-        /// <summary>
-    /// Attempts to set an attribute to the provided value. The provided key must be no longer than 100 characters.
-    /// Returns false if the key is too long or the provided type is not supported by Roblox.
-    /// If an attribute with the provide key already exists, it will be overwritten.
-        /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <param name="key">The name of the attribute.</param>
-    /// <param name="value">The value to be assigned to the attribute.</param>
-    /// <returns>True if the attribute was set, false otherwise.</returns>
     public bool SetAttribute<T>(string key, T value)
     {
         if (key.Length > 100)
@@ -148,6 +131,40 @@ class Instance:
     }
     """
 
+    def GetDescendants(self) -> list[Instance]:
+        """Returns array of all descendants."""
+        descendants = []
+        for child in self._children:
+            descendants.append(child)
+            descendants.extend(child.GetDescendants())
+        return descendants
+
+    def FindFirstChild(self, name: str, recursive: bool = False) -> Optional[Instance]:
+        """Find first child by name."""
+        for child in self._children:
+            if child.Name == name:
+                return child
+        
+        if recursive:
+            for child in self._children:
+                found = child.FindFirstChild(name, True)
+                if found:
+                    return found
+        return None
+
+    def FindFirstChildOfClass(self, class_type: type, recursive: bool = False) -> Optional[Instance]:
+        """Find first child of specific class type."""
+        for child in self._children:
+            if isinstance(child, class_type):
+                return child
+        
+        if recursive:
+            for child in self._children:
+                found = child.FindFirstChildOfClass(class_type, True)
+                if found:
+                    return found
+        return None
+
     def IsAncestorOf(self, descendant: Instance | None) -> bool:
         """
         :param descendant: The instance whose descendance will be tested against this Instance.
@@ -168,21 +185,12 @@ class Instance:
         return ancestor.IsAncestorOf(self) if ancestor is not None else False
 
     """
-    /// <summary>
-/// Returns true if the provided instance inherits from the provided instance type.
-    /// </summary>
 [Obsolete("Use the `is` operator instead.")]
 public bool IsA<T>() where T : Instance
 {
     return this is T;
 }
 
-    /// <summary>
-/// Attempts to cast this Instance to an inherited class of type '<typeparamref name="T"/>'.
-/// Returns null if the instance cannot be casted to the provided type.
-    /// </summary>
-/// <typeparam name="T">The type of Instance to cast to.</typeparam>
-/// <returns>The instance as the type '<typeparamref name="T"/>' if it can be converted, or null.</returns>
 [Obsolete("Use the `as` operator instead.")]
 public T Cast<T>() where T : Instance
 {
@@ -235,17 +243,11 @@ public T Cast<T>() where T : Instance
 
     """
 
-    /// <summary>
-/// Returns an array containing all the children of this Instance.
-    /// </summary>
 public Instance[] GetChildren()
 {
     return _children.ToArray();
 }
 
-    /// <summary>
-/// Returns an array containing all the children of this Instance, whose type is '<typeparamref name="T"/>'.
-    /// </summary>
 public T[] GetChildrenOfType<T>() where T : Instance
 {
     T[] ofType = GetChildren()
@@ -256,19 +258,14 @@ public T[] GetChildrenOfType<T>() where T : Instance
     return ofType;
 }
 
-    /// <summary>
-/// Returns an array containing all the descendants of this Instance.
-    /// </summary>
 public Instance[] GetDescendants()
 {
     var results = new List<Instance>();
 
     foreach (Instance child in _children)
     {
-        // Add this child to the results.
         results.Add(child);
 
-        // Add its descendants to the results.
         Instance[] descendants = child.GetDescendants();
         results.AddRange(descendants);
     }
@@ -276,9 +273,6 @@ public Instance[] GetDescendants()
     return results.ToArray();
 }
 
-    /// <summary>
-/// Returns an array containing all the descendants of this Instance, whose type is '<typeparamref name="T"/>'.
-    /// </summary>
 public T[] GetDescendantsOfType<T>() where T : Instance
 {
     T[] ofType = GetDescendants()
@@ -289,12 +283,6 @@ public T[] GetDescendantsOfType<T>() where T : Instance
     return ofType;
 }
 
-    /// <summary>
-/// Returns the first child of this Instance whose Name is the provided string name.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="name">The Name of the Instance to find.</param>
-/// <param name="recursive">Indicates if we should search descendants as well.</param>
 public T FindFirstChild<T>(string name, bool recursive = false) where T : Instance
 {
     T result = null;
@@ -325,22 +313,11 @@ public T FindFirstChild<T>(string name, bool recursive = false) where T : Instan
     return result;
 }
 
-    /// <summary>
-/// Returns the first child of this Instance whose Name is the provided string name.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="name">The Name of the Instance to find.</param>
-/// <param name="recursive">Indicates if we should search descendants as well.</param>
 public Instance FindFirstChild(string name, bool recursive = false)
 {
     return FindFirstChild<Instance>(name, recursive);
 }
 
-    /// <summary>
-/// Returns the first ancestor of this Instance whose Name is the provided string name.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="name">The Name of the Instance to find.</param>
 public T FindFirstAncestor<T>(string name) where T : Instance
 {
     Instance ancestor = Parent;
@@ -349,28 +326,18 @@ public T FindFirstAncestor<T>(string name) where T : Instance
     {
         if (ancestor is T && ancestor.Name == name)
             return ancestor as T;
-        
+
         ancestor = ancestor.Parent;
     }
 
     return null;
 }
 
-    /// <summary>
-/// Returns the first ancestor of this Instance whose Name is the provided string name.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="name">The Name of the Instance to find.</param>
 public Instance FindFirstAncestor(string name)
 {
     return FindFirstAncestor<Instance>(name);
 }
 
-    /// <summary>
-/// Returns the first ancestor of this Instance whose ClassName is the provided string className.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="name">The Name of the Instance to find.</param>
 public T FindFirstAncestorOfClass<T>() where T : Instance
 {
     Instance ancestor = Parent;
@@ -379,18 +346,13 @@ public T FindFirstAncestorOfClass<T>() where T : Instance
     {
         if (ancestor is T)
             return ancestor as T;
-        
+
         ancestor = ancestor.Parent;
     }
 
     return null;
 }
 
-    /// <summary>
-/// Returns the first ancestor of this Instance which derives from the provided type <typeparamref name="T"/>.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="name">The Name of the Instance to find.</param>
 public T FindFirstAncestorWhichIsA<T>() where T : Instance
 {
     T ancestor = null;
@@ -410,11 +372,6 @@ public T FindFirstAncestorWhichIsA<T>() where T : Instance
     return ancestor;
 }
 
-    /// <summary>
-/// Returns the first Instance whose ClassName is the provided string className.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="className">The ClassName of the Instance to find.</param>
 public T FindFirstChildOfClass<T>(bool recursive = false) where T : Instance
 {
     var query = _children
@@ -422,7 +379,7 @@ public T FindFirstChildOfClass<T>(bool recursive = false) where T : Instance
         .Cast<T>();
 
     T result = null;
-    
+
     if (query.Any())
     {
         result = query.First();
@@ -444,15 +401,11 @@ public T FindFirstChildOfClass<T>(bool recursive = false) where T : Instance
     return result;
 }
 
-    /// <summary>
-/// Disposes of this instance and its descendants, and locks its parent.
-/// All property bindings, tags, and attributes are cleared.
-    /// </summary>
 public void Destroy()
 {
     Destroyed = true;
     props.Clear();
-    
+
     Parent = null;
     _parent_locked = true;
 
@@ -466,11 +419,6 @@ public void Destroy()
     }
 }
 
-    /// <summary>
-/// Creates a deep copy of this instance and its descendants.
-/// Any instances that have Archivable set to false are not included.
-/// This can include the instance itself, in which case this will return null.
-    /// </summary>
 public Instance Clone()
 {
     var mitosis = new Dictionary<Instance, Instance>();
@@ -489,7 +437,6 @@ public Instance Clone()
 
         foreach (var pair in oldInst.Properties)
         {
-            // Create memberwise copy of the property.
             var oldProp = pair.Value;
 
             var newProp = new Property()
@@ -521,7 +468,6 @@ public Instance Clone()
         newInst.Parent = newParent;
     }
 
-    // Patch referents where applicable.
     foreach (var prop in refProps)
     {
         if (!(prop.Value is Instance source))
@@ -533,17 +479,11 @@ public Instance Clone()
         prop.Value = copy;
     }
 
-    // Grab the copy of ourselves that we created.
     mitosis.TryGetValue(this, out Instance clone);
 
     return clone;
 }
 
-    /// <summary>
-/// Returns the first child of this Instance which derives from the provided type <typeparamref name="T"/>.
-/// If the instance is not found, this returns null.
-    /// </summary>
-/// <param name="recursive">Whether this should search descendants as well.</param>
 public T FindFirstChildWhichIsA<T>(bool recursive = false) where T : Instance
 {
     var query = _children
@@ -552,7 +492,7 @@ public T FindFirstChildWhichIsA<T>(bool recursive = false) where T : Instance
 
     if (query.Any())
         return query.First();
-    
+
     if (recursive)
     {
         foreach (Instance child in _children)

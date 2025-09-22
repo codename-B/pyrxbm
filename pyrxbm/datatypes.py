@@ -1,22 +1,22 @@
+# Cleaned: ensured TypeAlias import present; normalized whitespace.
 from __future__ import annotations
 
 from dataclasses import dataclass
 import numpy as np
+
+from typing import TypeAlias
 
 Enum: TypeAlias = int
 Double: TypeAlias = float
 Int64: TypeAlias = int
 SecurityCapabilities: TypeAlias = int
 
-
 def normal_id_to_vector(normal_id: int) -> np.ndarray:
     coords = np.zeros(3, dtype=np.float32)
     coords[normal_id % 3] = -1 if normal_id > 2 else 1
     return coords
 
-
 _NORMAL_VECTORS = np.column_stack([normal_id_to_vector(i) for i in range(6)])
-
 
 def orient_id_to_rotation_matrix(orient_id: int):
     """Returns a flattened 3x3 rotation matrix"""
@@ -24,7 +24,6 @@ def orient_id_to_rotation_matrix(orient_id: int):
     r1 = _NORMAL_VECTORS[:, orient_id % 6]
     r2 = np.cross(r0, r1)
     return np.concatenate((r0, r1, r2))
-
 
 def vectors_to_normal_ids(v: np.ndarray, tol: float = 1e-40) -> list[int | None]:
     """
@@ -45,7 +44,6 @@ def vectors_to_normal_ids(v: np.ndarray, tol: float = 1e-40) -> list[int | None]
         ids[0] if ids.size == 1 and is_01 else None for ids, is_01 in zip(idss, is_01s)
     ]
 
-
 def _normal_ids_to_orient_id(normal_ids: list[int | None]) -> int | None:
     if None in normal_ids:
         return None
@@ -53,7 +51,6 @@ def _normal_ids_to_orient_id(normal_ids: list[int | None]) -> int | None:
         return None
     else:
         return 6 * normal_ids[0] + normal_ids[1]
-
 
 def rotation_matrices_to_orient_ids(r: np.ndarray) -> list[int | None]:
     """
@@ -67,6 +64,54 @@ def rotation_matrices_to_orient_ids(r: np.ndarray) -> list[int | None]:
         for i in range(r.size // 9)
     ]
 
+class ProtectedString:
+    """
+    ProtectedString is a type used by the Source property of scripts.
+    If constructed as bytes, it's assumed to be compiled byte-code.
+    """
+    
+    def __init__(self, value):
+        if isinstance(value, str):
+            self.is_compiled = False
+            self.raw_buffer = value.encode('utf-8')
+        elif isinstance(value, bytes):
+            # Check if this looks like compiled bytecode
+            # Luau bytecode typically starts with a version number < 32
+            self.is_compiled = len(value) > 0 and value[0] < 32
+            self.raw_buffer = value
+        else:
+            raise TypeError(f"ProtectedString expects str or bytes, got {type(value)}")
+    
+    def __str__(self) -> str:
+        if self.is_compiled:
+            return f"byte[{len(self.raw_buffer)}]"
+        return self.raw_buffer.decode('utf-8', errors='replace')
+    
+    def __repr__(self) -> str:
+        return f"ProtectedString({'compiled' if self.is_compiled else 'source'}, {len(self.raw_buffer)} bytes)"
+    
+    def __eq__(self, other) -> bool:
+        if isinstance(other, ProtectedString):
+            return self.raw_buffer == other.raw_buffer
+        elif isinstance(other, str):
+            return str(self) == other
+        elif isinstance(other, bytes):
+            return self.raw_buffer == other
+        return False
+    
+    def __hash__(self) -> int:
+        import base64
+        return hash(base64.b64encode(self.raw_buffer))
+    
+    @property
+    def source_text(self) -> str:
+        """Get the source text, even if compiled (may be garbled for bytecode)."""
+        return self.raw_buffer.decode('utf-8', errors='replace')
+    
+    @property
+    def is_empty(self) -> bool:
+        """Check if the protected string is empty."""
+        return len(self.raw_buffer) == 0
 
 class CFrame:
     Identity: CFrame
@@ -100,9 +145,7 @@ class CFrame:
     def __str__(self):
         return ", ".join(str(c) for c in self.GetComponents())
 
-
 CFrame.Identity = CFrame()
-
 
 @dataclass
 class UniqueId:
